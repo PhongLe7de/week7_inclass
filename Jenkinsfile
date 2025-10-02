@@ -1,14 +1,15 @@
 pipeline {
     agent any
     tools{
+    jdk 'Java17'
         maven 'Maven3'
 
     }
 
     environment {
-        PATH = "C:\\Program Files\\Docker\\Docker\\resources\\bin;${env.PATH}"
-        DOCKERHUB_CREDENTIALS_ID = 'Docker_Hub'
-        DOCKER_IMAGE = 'amirdirin/javafx_with_db2'
+    PATH = "/usr/local/bin:${env.PATH}"
+        DOCKERHUB_CREDENTIALS_ID = 'docker_hub'
+        DOCKER_IMAGE = 'phongle7de/javafx_with_mariadb'
         DOCKER_TAG = 'latest'
     }
 
@@ -18,61 +19,59 @@ pipeline {
                 script {
                     def mvnHome = tool name: 'Maven3', type: 'maven'
                     env.PATH = "${mvnHome}/bin:${env.PATH}"
+                    echo "Maven setup completed. PATH: ${env.PATH}"
                 }
             }
         }
 
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/ADirin/javafx_with_mariadb.git'
+                git branch: 'main', url: 'https://github.com/PhongLe7de/week7_inclass.git'
             }
         }
 
         stage('Build') {
             steps {
                 script {
-                    if (isUnix()) {
-                        sh 'mvn clean package -DskipTests'
-                    } else {
-                        bat 'mvn clean package -DskipTests'
-                    }
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
 
         stage('Test') {
             steps {
-                script {
-                    if (isUnix()) {
-                        sh 'mvn test'
-                    } else {
-                        bat 'mvn test'
-                    }
-                }
+                sh 'mvn test'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    if (isUnix()) {
-                        sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-                    } else {
-                        bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
-                    }
-                }
+                sh "/usr/local/bin/docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
             }
         }
 
-        stage('Push Docker Image to Docker Hub') {
-            steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', env.DOCKERHUB_CREDENTIALS_ID) {
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                    }
-                }
-            }
+
+//         stage('Push Docker Image to Docker Hub') {
+//             steps {
+//                 script {
+//                     docker.withRegistry('https://index.docker.io/v1/', env.DOCKERHUB_CREDENTIALS_ID) {
+//                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
+//                     }
+//                 }
+//             }
+//         }
+stage('Push Docker Image to Docker Hub') {
+    steps {
+        withCredentials([usernamePassword(credentialsId: "${DOCKERHUB_CREDENTIALS_ID}",
+                                          usernameVariable: 'DOCKER_HUB_USERNAME',
+                                          passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
+            sh """
+                echo $DOCKER_HUB_PASSWORD | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+                docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+            """
         }
+    }
+}
     }
 
   post {
