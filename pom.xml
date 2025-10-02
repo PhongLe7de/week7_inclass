@@ -47,6 +47,10 @@
         <version>0.0.8</version> <!-- This is the plugin version, not JavaFX version -->
         <configuration>
             <mainClass>Main</mainClass> <!-- Replace with your full class name if in a package -->
+            <options>
+                <option>--add-modules</option>
+                <option>javafx.controls,javafx.fxml</option>
+            </options>
         </configuration>
     </plugin>
 
